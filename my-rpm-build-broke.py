@@ -19,17 +19,20 @@ def get_build_logs(build_id):
 
     build = client.build_proxy.get(build_id)
 
-    for chroot in build['chroots']:
-        build_chroot = client.build_chroot_proxy.get(build_id, chroot)
-        if build_chroot['state'] == 'failed':
-            break
-    else:
-        return None
-
     owner = build['ownername']
     project_name = build['projectname']
-
     pkg = build['source_package']['name']
+
+    if build['source_package']['name'] is None:
+        # srpm failed
+        chroot = "srpm-builds"
+    else:
+        for chroot in build['chroots']:
+            build_chroot = client.build_chroot_proxy.get(build_id, chroot)
+            if build_chroot['state'] == 'failed':
+                break
+        else:
+            return None
 
     pkg = "" if chroot == "srpm-builds" else f"-{pkg}"
     logs_url = (
