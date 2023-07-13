@@ -13,6 +13,24 @@ from pprint import pprint
 openai.api_key = os.environ["OPEN_API_TOKEN"]
 
 
+# logs contain a bunch of lines that are present in all logs and really provide any value
+# strip them out
+# there is a possibility these could add context but at the same time will make queries lighter
+FILTER_THESE_OUT = (
+    "Copr build error: Build failed\n",
+    "INFO: Results and/or logs in: /var/lib/copr-rpmbuild/results\n",
+    "INFO: Cleaning up build root ('cleanup_on_failure=True')\n",
+    "Start: clean chroot\n",
+    "INFO: unmounting tmpfs.\n",
+    "Finish: clean chroot\n",
+    "No matches found for the following disable plugin patterns: local, spacewalk, versionlock\n",
+    # " # /usr/bin/systemd-nspawn -q -M 14eada62b44..."  # not sure about this one, it's long but has a lot of info in
+    "Updating Subscription Management repositories.\n",
+    "Unable to read consumer identity\n",
+    "This system is not registered with an entitlement server. You can use subscription-manager to register.\n",
+)
+
+
 def get_build_logs(build_id):
     """ provide build logs for given failed Copr build as text """
     client = Client.create_from_config_file()
@@ -45,16 +63,21 @@ def get_build_logs(build_id):
 
 def get_logs_snippet(logs):
     """
-    This function is a stub. As LLMs limit input size, we need to strip the logs from useless information.
+    As LLMs limit input size, we need to strip the logs from useless information.
 
-    Right now we just naively take last 4k info.
-
-    This function should be much more sophisticated.
+    We filter out lines that are static and don't provide any specific info.
 
     :param logs: logs as text
     :return: subset of the logs as text
     """
-    return logs[-4096:]
+    # only work with last 4k where the errors typically are
+    tail_logs = logs[-4096:]
+    for dupe in FILTER_THESE_OUT:
+        tail_logs = tail_logs.replace(dupe, "")
+    new_len = len(tail_logs)
+    if new_len < 4096:
+        print(f"\nWe have saved {4096 - new_len} characters.\n")
+    return tail_logs
 
 
 def prompt_gpt(build_id):
@@ -70,8 +93,9 @@ def prompt_gpt(build_id):
     # mass are considered. We generally recommend altering this or temperature but not both.
     top_p = 1  # defaults to 1
 
-    logs = get_logs_snippet(get_build_logs(build_id))
-    print(f"{logs}\n\n")
+    full_logs = get_build_logs(build_id)
+    tail_logs = get_logs_snippet(full_logs)
+    print(f"{tail_logs}\n\n")
     # TODO: trick GPT to output JSON and process it
     # "Output in this JSON format: {\"short_summary\": \"<TBD>\", \"steps_to_fix\": [\"<step1>\", \"step2>\"]}. " +
     prompt = (
@@ -79,7 +103,7 @@ def prompt_gpt(build_id):
         "Please review the logs messages below, explain the root cause for the error and "
         "how it should fixed in the most optimal way. " +
         "The logs start here.\n" +
-        logs
+        tail_logs
     )
 
     analysis=[{"role": "system", "content": "You are an RPM Package Maintainer and an upstream developer."
