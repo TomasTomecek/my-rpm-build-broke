@@ -93,14 +93,21 @@ def prompt_gpt(build_id):
     )
     return analysis_response
 
-try:
-    build_id = sys.argv[1]
-except IndexError:
-    print(f"usage: {sys.argv[0]} COPR_BUILD_ID\n\n"
-          "  This program requires only a single argument: Copr build ID", file=sys.stderr)
-    sys.exit(3)
 
-out = prompt_gpt(int(build_id))
-pprint(out)
+def main():
+    try:
+        build_id = sys.argv[1]
+    except IndexError:
+        print(f"usage: {sys.argv[0]} COPR_BUILD_ID\n\n"
+              "  This program requires only a single argument: Copr build ID", file=sys.stderr)
+        return 3
 
-print(out["choices"][0]["message"]["content"])
+    out = prompt_gpt(int(build_id))
+    pprint(out)
+
+    print(out["choices"][0]["message"]["content"])
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
