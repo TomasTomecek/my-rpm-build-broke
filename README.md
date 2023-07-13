@@ -120,7 +120,10 @@ Once you have made the necessary code changes or updated the library, you can re
 
 ## Future work
 
-I have plenty of ideas where to go from here. I especially want to filter out
-the lines from the input that don't provide any value.
+I have plenty of ideas where to go from here.
 
 Post-processing the AI recommendation would also be beneficial.
+
+Try different models.
+
+Make the interface more usable.
