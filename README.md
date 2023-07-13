@@ -10,7 +10,7 @@ models](https://en.wikipedia.org/wiki/Large_language_model) it's time to say
 goodbye to analysis of megabytes of logs and leave this job to these AI models.
 
 Why should I as a human spend minutes, hours of reading these giant logs when
-we finally have software that can do that very well instead of us.
+we finally have software that can do that very well instead of me.
 
 
 ## Usage
@@ -30,6 +30,23 @@ $ ./my-rpm-build-broke.py 123456
 ```
 $ pip3 install -r ./requirements.txt
 ```
+
+[OpenAI API token](https://platform.openai.com/account/api-keys)
+```
+export OPEN_API_TOKEN=fooo-bar-baz
+```
+
+OpenAI doesn't provide a free tier for API access, so you are going to pay for every query. New accounts seem to get time-limited starter budget.
+
+This tool consumes around 1700 tokens per "chat". The pricing right now for gpt-3.5-turbo is
+```
+4K context
+Input: $0.0015 / 1K tokens
+Output: $0.002 / 1K tokens
+```
+so every run would cost you around $0.002
+
+I strongly suggest [to set usage limits](https://platform.openai.com/account/billing/limits).
 
 ## Example
 
