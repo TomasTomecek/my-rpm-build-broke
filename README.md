@@ -53,7 +53,11 @@ I strongly suggest [to set usage limits](https://platform.openai.com/account/bil
 ```
 $ python3 ./my-rpm-build-broke.py 6168772
 ```
-<details><summary>Tail of the RPM Build logs</summary>
+
+<details>
+
+<summary>Tail of the RPM Build logs</summary>
+
 ```
 JSSSession
 [ERROR] /builddir/build/BUILD/pki-11.5.0/base/server/src/main/java/org/dogtagpki/server/PKIServerSocketListener.java:[233,39] cannot find symbol
@@ -106,6 +110,7 @@ ERROR: Command failed:
 
 Copr build error: Build failed
 ```
+
 </details>
 
 > The root cause of the error is that the symbol `getLocalAddr()` and `getRemoteAddr()` cannot be found in the `org.mozilla.jss.ssl.javax.JSSSession` class. These symbols are being used in the `PKIServerSocketListener.java` file.
