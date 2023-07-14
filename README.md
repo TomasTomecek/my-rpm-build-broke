@@ -24,6 +24,8 @@ analysis and resolution.
 $ ./my-rpm-build-broke.py 123456
 ```
 
+Demo: https://youtu.be/Mtb77sZlaAI
+
 
 ## Requirements
 
