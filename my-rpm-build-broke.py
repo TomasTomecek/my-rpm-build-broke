@@ -6,11 +6,12 @@ import os
 import sys
 import openai
 import requests
+import argparse
 from copr.v3 import Client
 
 from pprint import pprint
 
-openai.api_key = os.environ["OPEN_API_TOKEN"]
+openai.api_key = os.environ.get("OPEN_API_TOKEN", None)
 
 
 # logs contain a bunch of lines that are present in all logs and really provide any value
@@ -29,6 +30,17 @@ FILTER_THESE_OUT = (
     "Unable to read consumer identity\n",
     "This system is not registered with an entitlement server. You can use subscription-manager to register.\n",
 )
+
+# Prompt GPT to analyze the logs
+USER_PROMPT = (
+        "The RPM build process failed and you need to fix it. " +
+        "Please review the logs messages below, explain the root cause for the error and "
+        "how it should fixed in the most optimal way. " +
+        "The logs start here.\n"
+)
+# configure the AI model's role so we get proper answers
+SYSTEM_PROMPT = "You are an RPM Package Maintainer and an upstream developer." + \
+    " You are responsible for RPM builds to successfully complete."
 
 
 def get_build_logs(build_id):
@@ -80,7 +92,7 @@ def get_logs_snippet(logs):
     return tail_logs
 
 
-def prompt_gpt(build_id):
+def prompt_gpt(build_id: int, dry_run: bool):
     # OpenAI's docs
     # What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random,
     # while lower values like 0.2 will make it more focused and deterministic.
@@ -95,41 +107,39 @@ def prompt_gpt(build_id):
 
     full_logs = get_build_logs(build_id)
     tail_logs = get_logs_snippet(full_logs)
-    print(f"{tail_logs}\n\n")
-    # TODO: trick GPT to output JSON and process it
-    # "Output in this JSON format: {\"short_summary\": \"<TBD>\", \"steps_to_fix\": [\"<step1>\", \"step2>\"]}. " +
-    prompt = (
-        "The RPM build process failed and you need to fix it. " +
-        "Please review the logs messages below, explain the root cause for the error and "
-        "how it should fixed in the most optimal way. " +
-        "The logs start here.\n" +
-        tail_logs
-    )
-
-    analysis=[{"role": "system", "content": "You are an RPM Package Maintainer and an upstream developer."
-                                            " You are responsible for RPM builds to successfully complete."},
-              {"role": "user", "content": prompt}]
-    analysis_response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # TODO we want GPT4!!!!!!
-        messages=analysis,
-        temperature=temperature,
-        top_p=top_p,
-    )
-    return analysis_response
+    print("These are the logs to send that we send to the AI model")
+    print(f"```\n{tail_logs}\n```")
+    if dry_run:
+        return f"# Merge the logs above with this prompt:\n{SYSTEM_PROMPT} {USER_PROMPT}"
+    else:
+        # TODO: trick GPT to output JSON and process it
+        # "Output in this JSON format: {\"short_summary\": \"<TBD>\", \"steps_to_fix\": [\"<step1>\", \"step2>\"]}. " +
+        analysis_response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # TODO we want GPT4!!!!!!
+            messages= [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": USER_PROMPT + tail_logs}
+            ],
+            temperature=temperature,
+            top_p=top_p,
+        )
+        pprint(analysis_response)
+        return analysis_response["choices"][0]["message"]["content"]
 
 
 def main():
-    try:
-        build_id = sys.argv[1]
-    except IndexError:
-        print(f"usage: {sys.argv[0]} COPR_BUILD_ID\n\n"
-              "  This program requires only a single argument: Copr build ID", file=sys.stderr)
-        return 3
+    parser = argparse.ArgumentParser(
+        prog='my-rpm-build-broke',
+        description='My RPM Build Broke :(',
+        epilog='Please help me analyze and resolve the build failure')
+    parser.add_argument('copr_build_id', help="Failed Copr Build ID to analyze", type=int)
+    parser.add_argument('--dry-run', action='store_true', default=False,
+                        help="Do NOT query OpenAI, only obtain the logs and present the prompt.")
+    args = parser.parse_args()
 
-    out = prompt_gpt(int(build_id))
-    pprint(out)
+    out = prompt_gpt(build_id=args.copr_build_id, dry_run=args.dry_run)
 
-    print(out["choices"][0]["message"]["content"])
+    print(out)
     return 0
 
 
