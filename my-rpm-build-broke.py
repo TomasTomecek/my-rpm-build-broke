@@ -4,14 +4,15 @@ Cheers https://github.com/elastic/chatgpt-log-analysis/blob/main/app.py
 """
 import os
 import sys
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ.get("OPEN_API_TOKEN", None))
 import requests
 import argparse
 from copr.v3 import Client
 
 from pprint import pprint
 
-openai.api_key = os.environ.get("OPEN_API_TOKEN", None)
 
 
 # logs contain a bunch of lines that are present in all logs and really provide any value
@@ -114,17 +115,15 @@ def prompt_gpt(build_id: int, dry_run: bool):
     else:
         # TODO: trick GPT to output JSON and process it
         # "Output in this JSON format: {\"short_summary\": \"<TBD>\", \"steps_to_fix\": [\"<step1>\", \"step2>\"]}. " +
-        analysis_response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # TODO we want GPT4!!!!!!
-            messages= [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": USER_PROMPT + tail_logs}
-            ],
-            temperature=temperature,
-            top_p=top_p,
-        )
+        analysis_response = client.chat.completions.create(model="gpt-3.5-turbo",  # TODO we want GPT4!!!!!!
+        messages= [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": USER_PROMPT + tail_logs}
+        ],
+        temperature=temperature,
+        top_p=top_p)
         pprint(analysis_response)
-        return analysis_response["choices"][0]["message"]["content"]
+        return analysis_response.choices[0].message.content
 
 
 def main():
